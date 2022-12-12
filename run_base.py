@@ -1,9 +1,8 @@
 import torch
-import pandas as pd
 from torch import nn
 from torch.utils.data import DataLoader
 import load_data
-from Models.LinearModel import LinearModel
+from models.LinearModel import LinearModel
 
 
 # def run():
@@ -67,8 +66,8 @@ if __name__ == '__main__':
     net = LinearModel(n)
 
     learning_rate = 0.001
-    num_of_epoch = 1
-    batch_size = 16
+    num_of_epoch = 10
+    batch_size = 128
 
     train_dataset, test_dataset = load_data.load_dataset()
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
