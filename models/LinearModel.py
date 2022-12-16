@@ -12,7 +12,7 @@ class LinearModel(nn.Module):
             nn.Linear(n, 16),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(16, 2),
+            nn.Linear(16, 1),
             nn.Sigmoid()
         )
 

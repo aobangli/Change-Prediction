@@ -21,7 +21,8 @@ from models.LinearModel import LinearModel
 
 
 def train():
-    loss_F = nn.CrossEntropyLoss()
+    # loss_F = nn.CrossEntropyLoss()
+    loss_F = nn.BCELoss()
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
     for epoch in range(num_of_epoch):
@@ -32,7 +33,7 @@ def train():
             optimizer.zero_grad()
             x_data, y_data = train_data
             outputs = net(x_data)
-            loss = loss_F(outputs, y_data)
+            loss = loss_F(outputs.view(-1), y_data)
             loss.backward()
             optimizer.step()
 
@@ -45,17 +46,26 @@ def train():
 
 def test():
     correct = 0
+    merged = 0
+    abandoned = 0
     total = 0
     with torch.no_grad():  # 表示下面的计算不需要计算图和反向求导
         for data in test_loader:
             x, y = data
             outputs = net(x)
-            _, predicted = torch.max(outputs.data, 1)
+            # _, predicted = torch.max(outputs.data, 1)
+            # 如果输出的预测值大于0.5，则predicted为1，否则为0
+            predicted = torch.where(outputs.data > 0.5, 1, 0)
+            predicted = predicted.view(-1)
+            merged += (predicted == 1).sum().item()
+            abandoned += (predicted == 0).sum().item()
             total += y.size(0)
             correct += (predicted == y).sum().item()  # 如果预测值和真实值相同， 则为true=1,  求和
 
-    print(correct)
-    print(total)
+    print("预测为阳性的样本数：%d" % merged)
+    print("预测为阴性的样本数：%d" % abandoned)
+    print("预测正确的样本数：%d" % correct)
+    print("总样本数：%d" % total)
     print('Accuracy : %d %%' % (100 * correct / total))
 
 
@@ -65,7 +75,7 @@ if __name__ == '__main__':
 
     net = LinearModel(n)
 
-    learning_rate = 0.001
+    learning_rate = 0.0001
     num_of_epoch = 10
     batch_size = 128
 

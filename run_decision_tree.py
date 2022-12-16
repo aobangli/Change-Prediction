@@ -74,7 +74,7 @@ auc_test = []
 for i in range(20):
     clf = tree.DecisionTreeClassifier(class_weight='balanced', max_depth=i + 1)
 
-    clf = clf.fit(xtrain, ytrain)
+    clf = clf.fit(xtrain.values, ytrain.values)
     y_test_proba = clf.predict_proba(xtest)
     false_positive_rate, recall, thresholds = roc_curve(ytest, y_test_proba[:, 1])
     roc_auc = auc(false_positive_rate, recall)

@@ -16,8 +16,8 @@ class Trainer(object):
         self._config = config
         self._optimizer = torch.optim.Adam(self._model.parameters(), lr=config['lr'],
                                            weight_decay=config['l2_regularization'])
-        # self._loss_func = torch.nn.BCELoss()
-        self._loss_func = torch.nn.CrossEntropyLoss()
+        self._loss_func = torch.nn.BCELoss()
+        # self._loss_func = torch.nn.CrossEntropyLoss()
 
     def _train_single_batch(self, x, labels):
         """
@@ -25,7 +25,7 @@ class Trainer(object):
         """
         self._optimizer.zero_grad()
         y_predict = self._model(x)
-        loss = self._loss_func(y_predict.view(-1, 2), labels)
+        loss = self._loss_func(y_predict.view(-1), labels)
 
         loss.backward()
         self._optimizer.step()

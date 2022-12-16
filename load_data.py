@@ -75,8 +75,8 @@ class MyDataset(data.Dataset):
         self.y_data = np.array(self.y_df)
 
         self.x_data = self.x_data.astype(np.float32)
-        # 使用交叉熵注释掉下面这行
-        # self.y_data = self.y_data.astype(np.float32)
+        # 使用CrossEntropyLoss()为损失函数注释掉下面这行
+        self.y_data = self.y_data.astype(np.float32)
 
         self.x_data = torch.from_numpy(self.x_data)
         self.y_data = torch.from_numpy(self.y_data)
@@ -90,7 +90,7 @@ class MyDataset(data.Dataset):
 
 dataset = MyDataset()
 
-train_size = int(len(dataset) * 0.7)
+train_size = int(len(dataset) * 0.8)
 test_size = len(dataset) - train_size
 
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])

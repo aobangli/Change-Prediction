@@ -6,7 +6,7 @@ class Wide(nn.Module):
     def __init__(self, input_dim):
         super(Wide, self).__init__()
         # hand-crafted cross-product features
-        self.linear = nn.Linear(in_features=input_dim, out_features=2)
+        self.linear = nn.Linear(in_features=input_dim, out_features=1)
 
     def forward(self, x):
         return self.linear(x)
@@ -54,7 +54,7 @@ class WideDeep(nn.Module):
         self._deep = Deep(config, self._deep_hidden_layers)
         # 之前直接将这个final_layer加入到了Deep模块里面，想着反正输出都是1，结果没注意到Deep没经过一个Linear层都会经过Relu激活函数，如果
         # 最后输出层大小是1的话，再经过ReLU之后，很可能变为了0，造成梯度消失问题，导致Loss怎么样都降不下来。
-        self._final_linear = nn.Linear(self._deep_hidden_layers[-1], 2)
+        self._final_linear = nn.Linear(self._deep_hidden_layers[-1], 1)
 
     def forward(self, x):
         # 先区分出稀疏特征和稠密特征，这里是按照列来划分的，即所有的行都要进行筛选
