@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.feature_extraction.text import CountVectorizer
 
 features_group = {
     'author': ['author_experience', 'author_merge_ratio', 'author_changes_per_week',
@@ -16,7 +17,7 @@ features_group = {
              'num_of_directory', 'modify_entropy', 'subsystem_num']
 }
 target = 'status'
-path = 'data/Libreoffice.csv'
+path = 'data/Eclipse_newly_mining.csv'
 
 # widedeep模型使用的稠密特征（数值型）
 dense_features_cols = ['author_experience', 'author_merge_ratio', 'author_changes_per_week',
@@ -90,7 +91,7 @@ class MyDataset(data.Dataset):
 
 dataset = MyDataset()
 
-train_size = int(len(dataset) * 0.8)
+train_size = int(len(dataset) * 0.6)
 test_size = len(dataset) - train_size
 
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
@@ -99,3 +100,8 @@ train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size
 def load_dataset():
     return train_dataset, test_dataset
 
+
+def process_text(df):
+    sentences = df['subject']
+    bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), token_patter=r'\b\w+\b', min_df=2)
+    return bigram_vectorizer.fit_transform(sentences).toarray()
