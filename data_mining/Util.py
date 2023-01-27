@@ -3,7 +3,7 @@ import os, csv
 import re, json
 from sklearn.metrics import roc_auc_score, accuracy_score, precision_recall_fscore_support
 import numpy as np
-from Config import *
+from config.DataMiningConfig import *
 
 
 def run_model(model, df, feature_list=initial_feature_list):

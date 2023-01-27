@@ -1,23 +1,8 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-import load_data
+from data_loader import load_data
 from models.LinearModel import LinearModel
-
-
-# def run():
-#     feature_list = load_data.feature_list
-#     n = len(feature_list)
-#
-#     net = LinearModel(n)
-#
-#     learning_rate = 0.001
-#     num_of_epoch = 1
-#     batch_size = 16
-#
-#     train_dataset, test_dataset = load_data.load_dataset()
-#     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-#     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 def train():

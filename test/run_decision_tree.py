@@ -6,14 +6,15 @@ from sklearn.metrics import roc_curve, auc
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
-import load_data
+import config.TrainConfig
+from data_loader import load_data
 
-feature_list = load_data.get_initial_feature_list()
-df = pd.read_csv(load_data.path)
+feature_list = config.TrainConfig.get_initial_feature_list()
+df = pd.read_csv(config.TrainConfig.path)
 y = df[load_data.target]
 df = df[feature_list]
 
-str_columns = [column for column in df.columns if column not in load_data.dense_features_cols]
+str_columns = [column for column in df.columns if column not in config.TrainConfig.dense_features_cols]
 
 for feature in str_columns:
     le = LabelEncoder()

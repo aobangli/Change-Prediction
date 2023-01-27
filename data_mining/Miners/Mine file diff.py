@@ -1,10 +1,12 @@
-import os, csv, json, joblib
+import os, csv, json
 import pandas as pd
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
+
+import config.TrainConfig
 from SimpleParser import Change
-from Config import *
+from config.DataMiningConfig import *
 
 def main():
     miner = DiffMiner(project, replace=False, verbose=False)
@@ -45,7 +47,7 @@ def create_change_summary(root, project, change_revision_file_ids_filename):
                 print(f'{change.change_number} has {len(first_revision.files)}  files !')
                 continue
             for file in first_revision.files:
-                writer.writerow([change.change_number, change.id, first_revision.id, file.path])
+                writer.writerow([change.change_number, change.id, first_revision.id, config.TrainConfig.path])
 
     # Libreoffice 7 changes without revisions
     # Eclipse 12 changes without revisions among 64844.

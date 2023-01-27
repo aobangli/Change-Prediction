@@ -3,10 +3,10 @@ import torch.nn as nn
 
 
 class Wide(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, output_dim):
         super(Wide, self).__init__()
         # hand-crafted cross-product features
-        self.linear = nn.Linear(in_features=input_dim, out_features=1)
+        self.linear = nn.Linear(in_features=input_dim, out_features=output_dim)
 
     def forward(self, x):
         return self.linear(x)
@@ -29,20 +29,22 @@ class Deep(nn.Module):
 
 
 class WideDeep(nn.Module):
-    def __init__(self, config, dense_features_cols, sparse_features_cols):
+    def __init__(self, config, dense_features_cols, sparse_features_cols, sparse_features_col_num):
         super(WideDeep, self).__init__()
         self._config = config
 
         self.dense_features_cols = dense_features_cols
+        self.sparse_features_cols = sparse_features_cols
+
         # 稠密特征的数量
         self._num_of_dense_feature = dense_features_cols.__len__()
-        # 稠密特征
-        self.sparse_features_cols = sparse_features_cols
+        # 稀疏特征类别数
+        self.sparse_features_col_num = sparse_features_col_num
 
         self.embedding_layers = nn.ModuleList([
             # 根据稀疏特征的个数创建对应个数的Embedding层，Embedding输入大小是稀疏特征的类别总数，输出稠密向量的维度由config文件配置
             nn.Embedding(num_embeddings=num_feat, embedding_dim=config['embed_dim'])
-            for num_feat in self.sparse_features_cols
+            for num_feat in self.sparse_features_col_num
         ])
 
         # Deep hidden layers
@@ -50,21 +52,23 @@ class WideDeep(nn.Module):
         self._deep_hidden_layers.insert(0, self._num_of_dense_feature + config['embed_dim'] * len(
             self.sparse_features_cols))
 
-        self._wide = Wide(self._num_of_dense_feature)
+        self._wide = Wide(self._num_of_dense_feature, config['output_dim'])
         self._deep = Deep(config, self._deep_hidden_layers)
         # 之前直接将这个final_layer加入到了Deep模块里面，想着反正输出都是1，结果没注意到Deep没经过一个Linear层都会经过Relu激活函数，如果
         # 最后输出层大小是1的话，再经过ReLU之后，很可能变为了0，造成梯度消失问题，导致Loss怎么样都降不下来。
-        self._final_linear = nn.Linear(self._deep_hidden_layers[-1], 1)
+        self._final_linear = nn.Linear(self._deep_hidden_layers[-1], config['output_dim'])
 
     def forward(self, x):
         # 先区分出稀疏特征和稠密特征，这里是按照列来划分的，即所有的行都要进行筛选
+        # 不能用下面这行区分，此时的数据x已经没有列名信息，只能通过列数来取，靠后的列是稀疏特征
+        # dense_input, sparse_inputs = x[:, self.dense_features_cols], x[:, self.sparse_features_cols]
         dense_input, sparse_inputs = x[:, :self._num_of_dense_feature], x[:, self._num_of_dense_feature:]
         sparse_inputs = sparse_inputs.long()
 
         sparse_embeds = [self.embedding_layers[i](sparse_inputs[:, i]) for i in range(sparse_inputs.shape[1])]
-        sparse_embeds = torch.cat(sparse_embeds, axis=-1)
+        sparse_embeds = torch.cat(sparse_embeds, dim=-1)
         # Deep模块的输入是稠密特征和稀疏特征经过Embedding产生的稠密特征的
-        deep_input = torch.cat([sparse_embeds, dense_input], axis=-1)
+        deep_input = torch.cat([sparse_embeds, dense_input], dim=-1)
 
         wide_out = self._wide(dense_input)
         deep_out = self._deep(deep_input)

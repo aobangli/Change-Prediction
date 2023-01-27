@@ -1,11 +1,13 @@
 import joblib
 from tqdm import tqdm
+
+import config.TrainConfig
 from data_mining.Util import *
 from data_mining.Miners.SimpleParser import *
 import pandas as pd
 from datetime import timedelta
 import numpy as np
-from Config import *
+from config.DataMiningConfig import *
 
 account_list_df = pd.read_csv(account_list_filepath)
 account_list_df['registered_on'] = pd.to_datetime(account_list_df['registered_on'])
@@ -224,7 +226,7 @@ class FeatureCalculator:
             if file.status == 'D': files_deleted += 1
             if file.status == 'A': files_added += 1
 
-            names = file.path.split('/')
+            names = config.TrainConfig.path.split('/')
             if len(names) > 1:
                 directories.update([names[-2]])
                 subsystems.update(names[0])
