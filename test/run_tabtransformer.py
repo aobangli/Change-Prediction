@@ -145,7 +145,7 @@ if __name__ == "__main__":
             'lr': 1e-4,
         }
 
-    train_dataset, test_dataset = load_data.load_dataset(target_labels)
+    train_dataset, test_dataset = load_data.load_dataset()
 
     # cont_mean_std = torch.randn(10, 2)
 

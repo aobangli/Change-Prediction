@@ -54,7 +54,7 @@ if __name__ == "__main__":
             'use_cuda': False,
         }
 
-    train_dataset, test_dataset = load_data.load_dataset(target_labels)
+    train_dataset, test_dataset = load_data.load_dataset()
 
     net = DeepCross(deepcross_config, dense_features_cols=dense_features_cols,
                     sparse_features_cols=sparse_features_cols,

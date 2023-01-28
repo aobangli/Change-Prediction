@@ -1,7 +1,8 @@
 import torch.nn as nn
 from config.LabelType import LabelType
 
-path = '../data/Eclipse_all_labels.csv'
+# 原始数据集路径
+data_path = '../data/Eclipse_all_labels.csv'
 
 features_group = {
     'author': ['author_experience', 'author_merge_ratio', 'author_changes_per_week',
@@ -76,3 +77,8 @@ def cal_val_by_multi_threshold(data, thresholds):
         if data <= threshold:
             return index
     return len(thresholds)
+
+
+feature_list = dense_features_cols + sparse_features_cols
+
+feature_label_list = feature_list + target_labels
