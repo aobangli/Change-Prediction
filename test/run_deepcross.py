@@ -43,10 +43,11 @@ def predict_by_deepcross(x):
 if __name__ == "__main__":
     deepcross_config = \
         {
+            'model_name': 'deepcross',
             'deep_layers': [256, 128, 64, 32],  # 设置Deep模块的隐层大小
             'num_cross_layers': 4,  # cross模块的层数
             'output_dim': num_of_labels,
-            'num_epoch': 10,
+            'num_epoch': 30,
             'batch_size': 256,
             'lr': 1e-4,
             'l2_regularization': 1e-4,

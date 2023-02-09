@@ -140,7 +140,8 @@ def predict_by_tabtransformer(x):
 if __name__ == "__main__":
     tabtransformer_config = \
         {
-            'num_epoch': 10,
+            'model_name': 'tabtransformer',
+            'num_epoch': 20,
             'batch_size': 256,
             'lr': 1e-4,
         }

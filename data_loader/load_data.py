@@ -40,8 +40,8 @@ def preprocess_labels(df):
             elif label_type == LabelType.Multiple_Classification:
                 df[[label]] = transform_label_to_multi_classification(df[[label]].copy())
             elif label_type == LabelType.Regression:
-                # 暂不做归一化
-                # self.df[[label]] = MinMaxScaler().fit_transform(self.df[[label]])
+                # pass
+                # df[[label]] = MinMaxScaler().fit_transform(df[[label]])
                 df[[label]] = StandardScaler().fit_transform(df[[label]])
     return df[target_labels]
 
@@ -56,7 +56,7 @@ def transform_label_to_binary_classification(df):
 def transform_label_to_multi_classification(df):
     for label in list(df.columns):
         threshold_list = multi_classification_label_threshold[label]
-        df[label] = df[label].apply(cal_val_by_multi_threshold, thresholds=threshold_list)
+        df[label] = df[label].apply(classify_by_multi_threshold, thresholds=threshold_list)
     return df
 
 
@@ -68,9 +68,9 @@ def resample(df, label):
     x_data = df[columns_except_status]
     y_data = df[[label]]
 
-    # sm = SMOTE(random_state=0)
-    smt = SMOTETomek(random_state=0)
-    x, y = smt.fit_resample(x_data, y_data)
+    sm = SMOTE(random_state=0)
+    # smt = SMOTETomek(random_state=0)
+    x, y = sm.fit_resample(x_data, y_data)
     print("SMOTE过采样后，训练集的{}标签分布情况: {}".format(label, Counter(y[label])))
 
     df = pd.concat([x, y], axis=1)
@@ -116,7 +116,7 @@ def load_dataset():
     df = preprocess_data(df)
 
     train_df, test_df = train_test_split(df, test_size=0.4)
-    train_df = resample(train_df, 'status')
+    # train_df = resample(train_df, 'status')
 
     train_dataset = MyDataset(train_df)
     test_dataset = MyDataset(test_df)
@@ -124,7 +124,7 @@ def load_dataset():
     return train_dataset, test_dataset
 
 
-def process_text(df):
-    sentences = df['subject']
-    bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), token_patter=r'\b\w+\b', min_df=2)
-    return bigram_vectorizer.fit_transform(sentences).toarray()
+# def process_text(df):
+#     sentences = df['subject']
+#     bigram_vectorizer = CountVectorizer(ngram_range=(1, 2), token_patter=r'\b\w+\b', min_df=2)
+#     return bigram_vectorizer.fit_transform(sentences).toarray()

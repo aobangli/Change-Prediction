@@ -43,13 +43,14 @@ def predict_by_widedeep(x):
 if __name__ == '__main__':
     widedeep_config = \
         {
+            'model_name': 'widedeep',
             'deep_dropout': 0,
             'embed_dim': 8,  # 用于控制稀疏特征经过Embedding层后的稠密特征大小
             'hidden_layers': [256, 128, 64],
             'output_dim': num_of_labels,
-            'num_epoch': 10,
+            'num_epoch': 20,
             'batch_size': 256,
-            'lr': 1e-3,
+            'lr': 1e-4,
             'l2_regularization': 1e-4,
             'device_id': 0,
             'use_cuda': False,

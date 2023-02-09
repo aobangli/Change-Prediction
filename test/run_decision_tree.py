@@ -10,8 +10,8 @@ import config.TrainConfig
 from data_loader import load_data
 
 feature_list = config.TrainConfig.get_initial_feature_list()
-df = pd.read_csv(config.TrainConfig.path)
-y = df[load_data.target]
+df = pd.read_csv(config.TrainConfig.data_path)
+y = df[load_data.target_labels]
 df = df[feature_list]
 
 str_columns = [column for column in df.columns if column not in config.TrainConfig.dense_features_cols]
