@@ -7,6 +7,9 @@ from sklearn.metrics import classification_report, roc_auc_score
 from torch.utils.tensorboard import SummaryWriter
 import time
 
+from config.model_input_func import func_dict
+
+
 # def print_loss(epoch, loss):
 #     with SummaryWriter(log_dir='/Users/aobang/PycharmProjects/tensorboard_logs', comment='train') as writer:  # 可以直接使用python的with语法，自动调用close方法
 #         # writer.add_histogram('his/x', x, epoch)
@@ -18,15 +21,17 @@ import time
 
 
 class MultiTrainer:
-    def __init__(self, model, predict_by_model, config):
+    def __init__(self, model, config):
         self.model = model
         self.config = config
-        self.predict_by_model = predict_by_model
+        self.predict_by_model = func_dict[self.config["model_name"]]
 
     def train(self, train_dataset):
         train_loader = DataLoader(train_dataset, batch_size=self.config['batch_size'], shuffle=True)
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config['lr'])
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config['lr']
+                                     # ,weight_decay=self.config['l2_regularization']
+                                     )
 
         time_str = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time()))
         # 使用tensorboard画loss图
@@ -41,7 +46,7 @@ class MultiTrainer:
             for batch, train_data in enumerate(train_loader):
 
                 x_data, y_data = train_data
-                outputs = self.predict_by_model(x_data)
+                outputs = self.predict_by_model(x_data, self.model)
 
                 assert outputs.shape[1] == num_of_labels == y_data.shape[1], "输出维数应该与标签个数相等！"
 
@@ -49,8 +54,9 @@ class MultiTrainer:
                 for label_index, (label, loss_func) in enumerate(zip(target_labels, loss_functions_by_label)):
                     output = outputs[:, label_index]
                     loss = loss_func(output.view(-1), y_data[:, label_index])
-                    writer.add_scalar(f'loss/{label}', loss.item(), loss_index)
                     all_labels_loss += loss
+
+                    writer.add_scalar(f'loss/{label}', loss.item(), loss_index)
 
                 optimizer.zero_grad()
                 all_labels_loss.backward()
@@ -75,7 +81,7 @@ class MultiTrainer:
             # 将batch_size设为测试集大小，以下循环只做一次
             for data in test_loader:
                 x, y = data
-                outputs = self.predict_by_model(x)
+                outputs = self.predict_by_model(x, self.model)
 
                 assert outputs.shape[1] == num_of_labels == y.shape[1], "输出维数应该与标签个数相等！"
 

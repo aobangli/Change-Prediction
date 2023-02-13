@@ -41,8 +41,8 @@ def preprocess_labels(df):
                 df[[label]] = transform_label_to_multi_classification(df[[label]].copy())
             elif label_type == LabelType.Regression:
                 # pass
-                # df[[label]] = MinMaxScaler().fit_transform(df[[label]])
-                df[[label]] = StandardScaler().fit_transform(df[[label]])
+                df[[label]] = MinMaxScaler().fit_transform(df[[label]])
+                # df[[label]] = StandardScaler().fit_transform(df[[label]])
     return df[target_labels]
 
 
@@ -86,9 +86,10 @@ def preprocess_data(df):
 
 
 class MyDataset(data.Dataset):
-    def __init__(self, df):
-        self.x_df = df[feature_list]
-        self.y_df = df[target_labels]
+    # reordered_feature_list和reordered_label_list可以指定特征以及特征列的顺序，有些模型对顺序有要求
+    def __init__(self, df, reordered_feature_list=feature_list, reordered_label_list=target_labels):
+        self.x_df = df[reordered_feature_list]
+        self.y_df = df[reordered_label_list]
 
         self.x_data = np.array(self.x_df)
         self.y_data = np.array(self.y_df)
@@ -107,22 +108,30 @@ class MyDataset(data.Dataset):
         return len(self.y_data)
 
 
-# 默认的label为status
-def load_dataset():
-    assert num_of_labels == len(label_types) == len(loss_functions_by_label),\
+def prepare_dataframe():
+    assert num_of_labels == len(label_types) == len(loss_functions_by_label), \
         "target_labels, label_types, loss_functions_by_label, 三个list的元素要一一对应"
 
     df = pd.read_csv(data_path)
     df = preprocess_data(df)
+    return df
 
+
+def load_splited_dataframe():
+    df = prepare_dataframe()
     train_df, test_df = train_test_split(df, test_size=0.4)
+    return train_df, test_df
+
+
+# 默认的label为status
+def load_dataset():
+    train_df, test_df = load_splited_dataframe()
     # train_df = resample(train_df, 'status')
 
     train_dataset = MyDataset(train_df)
     test_dataset = MyDataset(test_df)
 
     return train_dataset, test_dataset
-
 
 # def process_text(df):
 #     sentences = df['subject']

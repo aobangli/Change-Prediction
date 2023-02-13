@@ -38,7 +38,7 @@ dense_features_cols = ['author_experience', 'author_merge_ratio', 'author_change
 sparse_features_cols = ['is_documentation', 'is_bug_fixing', 'is_feature']
 
 # 每个稀疏特征的值的类别数，部分模型中需要指定，用于为每个稀疏特征构造embedding的参数
-sparse_features_col_num = [2, 2, 2]
+sparse_features_val_num = [2, 2, 2]
 
 # 数值型特征个数
 num_of_dense_feature = len(dense_features_cols)

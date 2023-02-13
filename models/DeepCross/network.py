@@ -58,30 +58,28 @@ class Cross(nn.Module):
         return out
 
 
-class DeepCross(BaseModel):
-    def __init__(self, config, dense_features_cols, sparse_features_cols, sparse_features_col_num):
-        super(DeepCross, self).__init__(config)
-        self._config = config
-        # 稠密和稀疏特征的数量
-        self._num_of_dense_feature = dense_features_cols.__len__()
-        self._num_of_sparse_feature = sparse_features_cols.__len__()
+class DeepCross(nn.Module):
+    def __init__(self, num_of_dense_feature, sparse_features_val_num, deep_layers, num_cross_layers, output_dim):
+        super(DeepCross, self).__init__()
+        # 稠密特征的数量
+        self._num_of_dense_feature = num_of_dense_feature
 
         # For categorical features, we embed the features in dense vectors of dimension of 6 * category cardinality^1/4
         # calculate all the embedding dimension of all the sparse features
-        self.embedding_dims = list(map(lambda x: int(6 * pow(x, 0.25)), sparse_features_col_num))
+        self.embedding_dims = list(map(lambda x: int(6 * pow(x, 0.25)), sparse_features_val_num))
         # create embedding layers for all the sparse features
         self.embedding_layers = nn.ModuleList([
             nn.Embedding(num_embeddings=e[0], embedding_dim=e[1], scale_grad_by_freq=True) for e in
-            list(zip(sparse_features_col_num, self.embedding_dims))
+            list(zip(sparse_features_val_num, self.embedding_dims))
         ])
 
         self._input_dim = self._num_of_dense_feature + sum(self.embedding_dims)
 
-        self._deepNet = Deep(self._input_dim, self._config['deep_layers'])
-        self._crossNet = Cross(self._input_dim, self._config['num_cross_layers'])
+        self._deepNet = Deep(self._input_dim, deep_layers)
+        self._crossNet = Cross(self._input_dim, num_cross_layers)
 
-        self._final_dim = self._input_dim + self._config['deep_layers'][-1]
-        self._final_linear = nn.Linear(self._final_dim, self._config['output_dim'])
+        self._final_dim = self._input_dim + deep_layers[-1]
+        self._final_linear = nn.Linear(self._final_dim, output_dim)
 
     def forward(self, x):
         # 先区分出稀疏特征和稠密特征，这里是按照列来划分的，即所有的行都要进行筛选

@@ -1,11 +1,11 @@
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-
 from config.TrainConfig import *
 from data_loader import load_data
 from models.LinearModel import LinearModel
-from MultiTrainer import MultiTrainer
+from trainer.MultiTrainer import MultiTrainer
+from trainer.MultiTrainerWeightingLoss import MultiTrainerWeightingLoss
+import loss_weighting_strategy.EW as EW_strategy
+import loss_weighting_strategy.UW as UW_strategy
+import loss_weighting_strategy.DWA as DWA_strategy
 
 
 # def train():
@@ -55,14 +55,44 @@ from MultiTrainer import MultiTrainer
 #     print("预测正确的样本数：%d" % correct)
 #     print("总样本数：%d" % total)
 #     print('Accuracy : %d %%' % (100 * correct / total))
+def multi_test():
+
+    num_of_features = len(load_data.feature_list)
+    net = LinearModel(num_of_features, num_of_labels)
+
+    trainer = MultiTrainer(model=net, config=dnn_config)
+    trainer.train(train_dataset)
+    trainer.test(test_dataset)
 
 
-def predict_by_dnn(x):
-    return net(x)
+def multi_weighting_test():
+    model_args_dict = {
+        'input_dim': len(load_data.feature_list),
+        'output_dim': num_of_labels
+    }
+
+    weight_args_dict = UW_strategy.default_args_dict
+
+    optim_args_dict = {
+        'optim': 'adam',
+        'lr': dnn_config['lr'],
+        # 'weight_decay': dnn_config['l2_regularization']
+    }
+
+    weighting_trainer = MultiTrainerWeightingLoss(
+        model=LinearModel,
+        weighting=UW_strategy.UW,
+        config=dnn_config,
+        model_args_dict=model_args_dict,
+        weight_args_dict=weight_args_dict,
+        optim_args_dict=optim_args_dict
+    )
+
+    weighting_trainer.train(train_dataset)
+    weighting_trainer.test(test_dataset)
 
 
 if __name__ == '__main__':
-
     dnn_config = \
         {
             'model_name': 'dnn',
@@ -70,15 +100,9 @@ if __name__ == '__main__':
             'num_epoch': 30,
             'batch_size': 256,
             'lr': 1e-4,
+            # 'l2_regularization': 1e-5,
         }
-
-    feature_list = load_data.feature_list
-    num_of_features = len(feature_list)
-
-    net = LinearModel(num_of_features, num_of_labels)
 
     train_dataset, test_dataset = load_data.load_dataset()
 
-    trainer = MultiTrainer(model=net, predict_by_model=predict_by_dnn, config=dnn_config)
-    trainer.train(train_dataset)
-    trainer.test(test_dataset)
+    multi_weighting_test()

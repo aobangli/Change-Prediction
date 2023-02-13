@@ -1,5 +1,4 @@
 from enum import Enum
-import torch.nn as nn
 
 
 class LabelType(Enum):
