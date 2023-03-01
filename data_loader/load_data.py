@@ -35,14 +35,16 @@ def preprocess_features(df):
 def preprocess_labels(df):
     for label, label_type in zip(target_labels, label_types):
         if label in regression_labels:
-            if label_type == LabelType.Binary_Classification:
+            if label_type == TaskType.Binary_Classification:
                 df[[label]] = transform_label_to_binary_classification(df[[label]].copy())
-            elif label_type == LabelType.Multiple_Classification:
+            elif label_type == TaskType.Multiple_Classification:
                 df[[label]] = transform_label_to_multi_classification(df[[label]].copy())
-            elif label_type == LabelType.Regression:
-                # pass
-                df[[label]] = MinMaxScaler().fit_transform(df[[label]])
-                # df[[label]] = StandardScaler().fit_transform(df[[label]])
+            elif label_type == TaskType.Regression:
+                if apply_minmax_to_regression:
+                    # scaler = MinMaxScaler()
+                    scaler = StandardScaler()
+                    df[[label]] = scaler.fit_transform(df[[label]])
+                    scalers_buffer[label] = scaler
     return df[target_labels]
 
 

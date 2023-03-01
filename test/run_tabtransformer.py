@@ -57,7 +57,7 @@ def multi_weighting_test():
         # continuous_mean_std=cont_mean_std  # (optional) - normalize the continuous values before layer norm
     }
 
-    weight_args_dict = UW_strategy.default_args_dict
+    weight_args_dict = EW_strategy.default_args_dict
 
     optim_args_dict = {
         'optim': 'adam',
@@ -67,7 +67,7 @@ def multi_weighting_test():
 
     weighting_trainer = MultiTrainerWeightingLoss(
         model=TabTransformer,
-        weighting=UW_strategy.UW,
+        weighting=EW_strategy.EW,
         config=tabtransformer_config,
         model_args_dict=model_args_dict,
         weight_args_dict=weight_args_dict,
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     tabtransformer_config = \
         {
             'model_name': 'tabtransformer',
-            'num_epoch': 20,
+            'num_epoch': 30,
             'batch_size': 256,
             'lr': 1e-4,
         }

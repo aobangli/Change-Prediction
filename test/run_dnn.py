@@ -71,7 +71,7 @@ def multi_weighting_test():
         'output_dim': num_of_labels
     }
 
-    weight_args_dict = UW_strategy.default_args_dict
+    weight_args_dict = EW_strategy.default_args_dict
 
     optim_args_dict = {
         'optim': 'adam',
@@ -81,7 +81,7 @@ def multi_weighting_test():
 
     weighting_trainer = MultiTrainerWeightingLoss(
         model=LinearModel,
-        weighting=UW_strategy.UW,
+        weighting=EW_strategy.EW,
         config=dnn_config,
         model_args_dict=model_args_dict,
         weight_args_dict=weight_args_dict,

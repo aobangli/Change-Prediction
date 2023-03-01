@@ -88,15 +88,15 @@ class MultiTrainer:
                 for label_index, (label, label_type) in enumerate(zip(target_labels, label_types)):
                     print("#" * 10, "Label:", label, "#" * 10)
                     output = outputs[:, label_index]
-                    if label_type == LabelType.Binary_Classification:
+                    if label_type == TaskType.Binary_Classification:
                         # 如果输出的预测值大于0.5，则predicted为1，否则为0
                         predicted = torch.where(output.data > 0.5, 1, 0)
                         predicted = predicted.view(-1)
 
                         print(classification_report(y[:, label_index], predicted))
                         print("auc = ", roc_auc_score(y[:, label_index], output.data))
-                    elif label_type == LabelType.Multiple_Classification:
+                    elif label_type == TaskType.Multiple_Classification:
                         pass
-                    elif label_type == LabelType.Regression:
+                    elif label_type == TaskType.Regression:
                         criterion = nn.MSELoss()
                         print("mse loss = ", criterion(output, y[:, label_index]).item())

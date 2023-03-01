@@ -6,7 +6,7 @@ import torch
 from sklearn.metrics import log_loss, roc_auc_score
 
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
-from models.ple import PLE
+from models.ShareBottom import SharedBottom
 
 from config.TrainConfig import *
 from data_loader import load_data
@@ -49,14 +49,14 @@ def multi_weighting_test():
 
     optim_args_dict = {
         'optim': 'adam',
-        'lr': ple_config['lr'],
+        'lr': sharebottom_config['lr'],
         # 'weight_decay': widedeep_config['l2_regularization']
     }
 
     weighting_trainer = MultiTrainerWeightingLoss(
-        model=PLE,
+        model=SharedBottom,
         weighting=EW_strategy.EW,
-        config=ple_config,
+        config=sharebottom_config,
         model_args_dict=model_args_dict,
         weight_args_dict=weight_args_dict,
         optim_args_dict=optim_args_dict
@@ -73,8 +73,8 @@ def multi_weighting_test():
 
 
 if __name__ == "__main__":
-    ple_config = {
-        'model_name': 'ple',
+    sharebottom_config = {
+        'model_name': 'sharebottom',
         'num_epoch': 25,
         'batch_size': 256,
         'lr': 1e-4,

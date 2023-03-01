@@ -29,11 +29,16 @@ def predict_by_ple(x, model):
     return model(x)
 
 
+def predict_by_sharebottom(x, model):
+    return model(x)
+
+
 func_dict = {
     'dnn': predict_by_dnn,
     'widedeep': predict_by_widedeep,
     'deepcross': predict_by_deepcross,
     'tabtransformer': predict_by_tabtransformer,
     'mmoe': predict_by_mmoe,
-    'ple': predict_by_ple
+    'ple': predict_by_ple,
+    'sharebottom': predict_by_sharebottom,
 }
