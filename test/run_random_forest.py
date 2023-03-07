@@ -23,6 +23,10 @@ def run_binary_cls_task(label):
     print(classification_report(y_test, preds))
     print("auc = ", roc_auc_score(y_test, score))
 
+    print("Features sorted by their score:")
+    print(sorted(zip(map(lambda val: round(val, 4), rfc.feature_importances_), feature_list), reverse=True))
+
+
 
 def run_multi_cls_task(label):
     y = df[label]
@@ -40,6 +44,9 @@ def run_multi_cls_task(label):
 
     print(classification_report(y_test, preds))
     print("auc = ", roc_auc_score(y_test, score, multi_class='ovr'))
+
+    print("Features sorted by their score:")
+    print(sorted(zip(map(lambda val: round(val, 4), rfc.feature_importances_), feature_list), reverse=True))
 
 
 if __name__ == "__main__":
