@@ -87,6 +87,7 @@ num_of_dense_feature = len(dense_features_cols)
 regression_labels = ['num_of_reviewers', 'rounds', 'time', 'avg_score']
 # 需要预测的label
 target_labels = ['rounds', 'time', 'avg_score', 'status']
+# target_labels = ['status']
 # 要预测的label数量
 num_of_labels = len(target_labels)
 # 是否对回归任务label进行归一化
@@ -104,6 +105,9 @@ label_types = [
     TaskType.Multiple_Classification,
     TaskType.Binary_Classification
 ]
+# label_types = [
+#     TaskType.Binary_Classification
+# ]
 # 指定每个label的激活函数，与上面labels一一对应
 # 注意：对于二分类任务，widedeep和deepcross模型使用BCELoss()，tabtransformer模型使用BCEWithLogitsLoss()
 # loss_functions_by_label = [AsymmetricLoss(gamma_neg=1, gamma_pos=2, clip=0)]
@@ -127,6 +131,8 @@ binary_classification_label_threshold = {'num_of_reviewers': 1, 'rounds': 2, 'ti
 # 将数值型标签转换为多分类的阈值区间，从0开始取值，除了两侧的区间外，每个区间左开右闭
 multi_classification_label_threshold = \
     {'num_of_reviewers': [2, 4], 'rounds': [1, 6], 'time': [1, 7], 'avg_score': [1, 1.75]}
+# multi_classification_label_threshold = \
+#     {'num_of_reviewers': [2, 4], 'rounds': [1, 6], 'time': [0.0417, 1, 7, 30], 'avg_score': [1, 1.75]}
 
 
 # 根据阈值区间，将给定数值型数据映射为多分类特征
@@ -159,3 +165,6 @@ feature_label_list = feature_list + target_labels
 
 # 对label做归一化时，保存对应的scaler，方便后面对模型预测结果还原
 scalers_buffer = {}
+
+# 训练时是否打印日志到控制台
+print_train_log = True

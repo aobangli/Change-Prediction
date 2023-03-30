@@ -1,9 +1,12 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader
 
 from config.TrainConfig import *
-from sklearn.metrics import classification_report, roc_auc_score, r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics import classification_report, roc_auc_score, r2_score, mean_absolute_error, mean_squared_error, \
+    precision_recall_curve
 
 from torch.utils.tensorboard import SummaryWriter
 import time
@@ -133,7 +136,7 @@ class MultiTrainerWeightingLoss:
                 # batch_weight[:, epoch, batch] = weight
                 for label_index, label in enumerate(target_labels):
                     label_weight = weight[label_index]
-                    if batch % 10 == 0:
+                    if print_train_log and batch % 10 == 0:
                         print(f'label: {label}  weight: {label_weight}')
                     writer.add_scalar(f'weight/{label}', label_weight, weight_index)
                 weight_index += 1
@@ -141,7 +144,7 @@ class MultiTrainerWeightingLoss:
                 writer.add_scalar('loss/weighted_loss', weighted_loss, loss_index)
                 loss_index += 1
 
-                if batch % 10 == 0:
+                if print_train_log and batch % 10 == 0:
                     print('epoch = ', epoch + 1, 'loss = ', weighted_loss, 'batch = ', batch + 1)
 
                 epoch_weighted_loss += weighted_loss
@@ -152,7 +155,8 @@ class MultiTrainerWeightingLoss:
             for label_index in range(self.task_num):
                 self.mtl_model.train_loss_buffer[label_index, epoch] = epoch_losses[label_index] / sample_num
 
-            print('epoch = ', epoch + 1, 'epoch loss = ', epoch_weighted_loss / batch_num)
+            if print_train_log:
+                print('epoch = ', epoch + 1, 'epoch loss = ', epoch_weighted_loss / batch_num)
         writer.close()
 
     def test(self, test_dataset):
@@ -184,8 +188,16 @@ class MultiTrainerWeightingLoss:
                         predicted = torch.where(output.data > 0.5, 1, 0)
                         predicted = predicted.view(-1)
 
-                        print(classification_report(y_true, predicted))
-                        print("auc = ", roc_auc_score(y_true, output.data))
+                        with warnings.catch_warnings():
+                            warnings.simplefilter('ignore')
+                            print(classification_report(y_true, predicted))
+                            print("auc = ", roc_auc_score(y_true, output.data))
+
+                            # 计算使F1最高的分类阈值
+                            # precision, recall, thresholds = precision_recall_curve(y_true, output.data)
+                            # f1_scores = 2 * recall * precision / (recall + precision)
+                            # print('Best threshold: ', thresholds[np.argmax(f1_scores)])
+                            # print('Best F1-Score: ', np.max(f1_scores))
 
                         result[f'{label}_predict'] = predicted.numpy()
                         result[f'{label}_true'] = y_true.numpy()
@@ -193,8 +205,10 @@ class MultiTrainerWeightingLoss:
                     elif label_type == TaskType.Multiple_Classification:
                         _, predicted = torch.max(output.data, dim=1)  # predicated为维度（batch_size，1）的张量
 
-                        print(classification_report(y_true, predicted))
-                        print("auc = ", roc_auc_score(y_true, nn.Softmax(dim=1)(output.data), multi_class='ovr'))
+                        with warnings.catch_warnings():
+                            warnings.simplefilter('ignore')
+                            print(classification_report(y_true, predicted))
+                            print("auc = ", roc_auc_score(y_true, nn.Softmax(dim=1)(output.data), multi_class='ovr'))
 
                         result[f'{label}_predict'] = predicted.numpy()
                         result[f'{label}_true'] = y_true.numpy()

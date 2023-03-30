@@ -1,9 +1,5 @@
 # -*- coding:utf-8 -*-
-"""
 
-Reference:
-    [1] Tang H, Liu J, Zhao M, et al. Progressive layered extraction (ple): A novel multi-task learning (mtl) model for personalized recommendations[C]//Fourteenth ACM Conference on Recommender Systems. 2020.(https://dl.acm.org/doi/10.1145/3383313.3412236)
-"""
 import torch
 import torch.nn as nn
 
@@ -11,8 +7,10 @@ from deepctr_torch.models.basemodel import BaseModel
 from deepctr_torch.inputs import combined_dnn_input
 from deepctr_torch.layers import DNN, PredictionLayer
 
+from collections import Counter
 
-class PLE(BaseModel):
+
+class PLE_ADD_PART_EXPERT(BaseModel):
     """Instantiates the multi level of Customized Gate Control of Progressive Layered Extraction architecture.
 
     :param dnn_feature_columns: An iterable containing all the features used by deep part of the model.
@@ -31,6 +29,7 @@ class PLE(BaseModel):
     :param dnn_activation: Activation function to use in DNN.
     :param dnn_use_bn: bool, Whether use BatchNormalization before activation or not in DNN.
     :param task_types: list of str, indicating the loss of each tasks, ``"binary"`` for  binary logloss, ``"regression"`` for regression loss. e.g. ['binary', 'regression']
+    :param task_part: 不同任务可能属于一个大类（part），一个part的任务可能会设置共享expert。如果本参数取(0, 0, 1, 1), 则说明第1、2个任务属于第1个part，第3、4个任务属于第2个part，
     :param task_names: list of str, indicating the predict target of each tasks.
     :param device: str, ``"cpu"`` or ``"cuda:0"``.
     :param gpus: list of int or torch.device for multiple gpus. If None, run on `device`. `gpus[0]` should be the same gpu with `device`.
@@ -38,14 +37,18 @@ class PLE(BaseModel):
     :return: A PyTorch model instance.
     """
 
-    def __init__(self, dnn_feature_columns, shared_expert_num=1, specific_expert_num=1, num_levels=2,
+    def __init__(self, dnn_feature_columns, shared_expert_num=1, specific_expert_num=1, part_expert_num=1, num_levels=2,
                  expert_dnn_hidden_units=(256, 128), gate_dnn_hidden_units=(64,), tower_dnn_hidden_units=(64,),
                  l2_reg_linear=0.00001, l2_reg_embedding=0.00001, l2_reg_dnn=0, init_std=0.0001, seed=1024,
-                 dnn_dropout=0, dnn_activation='relu', dnn_use_bn=False, task_types=('binary', 'binary'),
-                 task_names=('ctr', 'ctcvr'), task_out_dims=(1, 1), device='cpu', gpus=None):
-        super(PLE, self).__init__(linear_feature_columns=[], dnn_feature_columns=dnn_feature_columns,
-                                  l2_reg_linear=l2_reg_linear, l2_reg_embedding=l2_reg_embedding, init_std=init_std,
-                                  seed=seed, device=device, gpus=gpus)
+                 dnn_dropout=0, dnn_activation='relu', dnn_use_bn=False,
+                 task_types=('multiclass', 'multiclass', 'multiclass', 'binary'),
+                 task_part=(0, 0, 1, 1),
+                 task_names=('rounds', 'time', 'avg_score', 'status'),
+                 task_out_dims=(3, 3, 3, 1), device='cpu', gpus=None):
+        super(PLE_ADD_PART_EXPERT, self).__init__(linear_feature_columns=[], dnn_feature_columns=dnn_feature_columns,
+                                                  l2_reg_linear=l2_reg_linear, l2_reg_embedding=l2_reg_embedding,
+                                                  init_std=init_std,
+                                                  seed=seed, device=device, gpus=gpus)
         self.num_tasks = len(task_names)
         if self.num_tasks <= 1:
             raise ValueError("num_tasks must be greater than 1!")
@@ -62,6 +65,7 @@ class PLE(BaseModel):
 
         self.specific_expert_num = specific_expert_num
         self.shared_expert_num = shared_expert_num
+        self.part_expert_num = part_expert_num
         self.num_levels = num_levels
         self.task_names = task_names
         self.input_dim = self.compute_input_dim(dnn_feature_columns)
@@ -69,6 +73,8 @@ class PLE(BaseModel):
         self.gate_dnn_hidden_units = gate_dnn_hidden_units
         self.tower_dnn_hidden_units = tower_dnn_hidden_units
         self.task_out_dims = task_out_dims
+
+        self.task_part = task_part
 
         def multi_module_list(num_level, num_tasks, expert_num, inputs_dim_level0, inputs_dim_not_level0, hidden_units):
             return nn.ModuleList(
@@ -88,9 +94,13 @@ class PLE(BaseModel):
         self.shared_experts = multi_module_list(self.num_levels, 1, self.shared_expert_num,
                                                 self.input_dim, expert_dnn_hidden_units[-1], expert_dnn_hidden_units)
 
+        self.part_num = len(set(task_part))
+        self.part_experts = multi_module_list(self.num_levels, self.part_num, self.part_expert_num,
+                                              self.input_dim, expert_dnn_hidden_units[-1], expert_dnn_hidden_units)
+
         # 2. gates
         # gates for task-specific experts
-        specific_gate_output_dim = self.specific_expert_num + self.shared_expert_num
+        specific_gate_output_dim = self.specific_expert_num + self.part_expert_num + self.shared_expert_num
         if len(gate_dnn_hidden_units) > 0:
             self.specific_gate_dnn = multi_module_list(self.num_levels, self.num_tasks, 1,
                                                        self.input_dim, expert_dnn_hidden_units[-1],
@@ -104,8 +114,30 @@ class PLE(BaseModel):
                 expert_dnn_hidden_units[-1], specific_gate_output_dim, bias=False)
                 for _ in range(self.num_tasks)]) for level_num in range(self.num_levels)])
 
+        # gates for part experts
+        # 每个part的任务数不一定是一样的，所以part_gate_ouput_dim对于每个part是不一样的，不能用一个常数表示
+        # part_gate_ouput_dim = (part的任务数 * 每个任务expert数) + self.part_expert_num + self.shared_expert_num
+        part_gate_ouput_dims = {}
+        for i in range(self.part_num):
+            count = Counter(task_part)
+            task_num_for_current_part = count[i]
+            part_gate_ouput_dims[i] = task_num_for_current_part * self.specific_expert_num + self.part_expert_num + self.shared_expert_num
+
+        if len(gate_dnn_hidden_units) > 0:
+            self.part_gate_dnn = multi_module_list(self.num_levels, self.part_num, 1,
+                                                   self.input_dim, expert_dnn_hidden_units[-1],
+                                                   gate_dnn_hidden_units)
+            self.add_regularization_weight(
+                filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], self.part_gate_dnn.named_parameters()),
+                l2=l2_reg_dnn)
+        self.part_gate_dnn_final_layer = nn.ModuleList(
+            [nn.ModuleList([nn.Linear(
+                gate_dnn_hidden_units[-1] if len(gate_dnn_hidden_units) > 0 else self.input_dim if level_num == 0 else
+                expert_dnn_hidden_units[-1], part_gate_ouput_dims[part_index], bias=False)
+                for part_index in range(self.part_num)]) for level_num in range(self.num_levels)])
+
         # gates for shared experts
-        shared_gate_output_dim = self.num_tasks * self.specific_expert_num + self.shared_expert_num
+        shared_gate_output_dim = self.num_tasks * self.specific_expert_num + self.part_num * self.part_expert_num + self.shared_expert_num
         if len(gate_dnn_hidden_units) > 0:
             self.shared_gate_dnn = nn.ModuleList([DNN(self.input_dim if level_num == 0 else expert_dnn_hidden_units[-1],
                                                       gate_dnn_hidden_units, activation=dnn_activation,
@@ -141,8 +173,10 @@ class PLE(BaseModel):
 
         self.out = nn.ModuleList([PredictionLayer(task) for task in task_types])
 
-        regularization_modules = [self.specific_experts, self.shared_experts, self.specific_gate_dnn_final_layer,
-                                  self.shared_gate_dnn_final_layer, self.tower_dnn_final_layer]
+        regularization_modules = [self.specific_experts, self.shared_experts, self.part_experts,
+                                  self.specific_gate_dnn_final_layer, self.shared_gate_dnn_final_layer,
+                                  self.part_gate_dnn_final_layer,
+                                  self.tower_dnn_final_layer]
         for module in regularization_modules:
             self.add_regularization_weight(
                 filter(lambda x: 'weight' in x[0] and 'bn' not in x[0], module.named_parameters()), l2=l2_reg_dnn)
@@ -150,7 +184,7 @@ class PLE(BaseModel):
 
     # a single cgc Layer
     def cgc_net(self, inputs, level_num):
-        # inputs: [task1, task2, ... taskn, shared task]
+        # inputs: [task1, task2, ... taskn, part1, ..., partk, shared task]
 
         # 1. experts
         # task-specific experts
@@ -159,6 +193,13 @@ class PLE(BaseModel):
             for j in range(self.specific_expert_num):
                 specific_expert_output = self.specific_experts[level_num][i][j](inputs[i])
                 specific_expert_outputs.append(specific_expert_output)
+
+        # part experts
+        part_expert_outputs = []
+        for i in range(self.part_num):
+            for j in range(self.part_expert_num):
+                part_expert_output = self.part_experts[level_num][i][j](inputs[self.num_tasks + i])
+                part_expert_outputs.append(part_expert_output)
 
         # shared experts
         shared_expert_outputs = []
@@ -171,8 +212,16 @@ class PLE(BaseModel):
         cgc_outs = []
         for i in range(self.num_tasks):
             # concat task-specific expert and task-shared expert
-            cur_experts_outputs = specific_expert_outputs[
-                                  i * self.specific_expert_num:(i + 1) * self.specific_expert_num] + shared_expert_outputs
+            specific_expert_output_for_current_task = specific_expert_outputs[i * self.specific_expert_num:
+                                                                              (i + 1) * self.specific_expert_num]
+            # 当前任务属于第几个part？
+            part_index = self.task_part[i]
+            part_expert_output_for_current_task = part_expert_outputs[part_index * self.part_expert_num:
+                                                                      (part_index + 1) * self.part_expert_num]
+
+            cur_experts_outputs = specific_expert_output_for_current_task \
+                                  + part_expert_output_for_current_task \
+                                  + shared_expert_outputs
             cur_experts_outputs = torch.stack(cur_experts_outputs, 1)
 
             # gate dnn
@@ -184,8 +233,27 @@ class PLE(BaseModel):
             gate_mul_expert = torch.matmul(gate_dnn_out.softmax(1).unsqueeze(1), cur_experts_outputs)  # (bs, 1, dim)
             cgc_outs.append(gate_mul_expert.squeeze())
 
+        # gates for part experts
+        for i in range(self.part_num):
+            # 寻找当前part拥有的任务的索引，用于从specific_expert_outputs中取出属于本part任务的specific_expert的输出
+            specific_expert_output_for_current_part = [specific_expert_outputs[task_index]
+                                                       for task_index in range(self.num_tasks)
+                                                       if self.task_part[task_index] == i]
+            part_expert_output_for_current_part = part_expert_outputs[i * self.part_expert_num:
+                                                                      (i + 1) * self.part_expert_num]
+            cur_experts_outputs = specific_expert_output_for_current_part + part_expert_output_for_current_part + shared_expert_outputs
+            cur_experts_outputs = torch.stack(cur_experts_outputs, 1)
+            # gate dnn
+            if len(self.gate_dnn_hidden_units) > 0:
+                gate_dnn_out = self.part_gate_dnn[level_num][i][0](inputs[self.num_tasks + i])
+                gate_dnn_out = self.part_gate_dnn_final_layer[level_num][i](gate_dnn_out)
+            else:
+                gate_dnn_out = self.part_gate_dnn_final_layer[level_num][i](inputs[self.num_tasks + i])
+            gate_mul_expert = torch.matmul(gate_dnn_out.softmax(1).unsqueeze(1), cur_experts_outputs)  # (bs, 1, dim)
+            cgc_outs.append(gate_mul_expert.squeeze())
+
         # gates for shared experts
-        cur_experts_outputs = specific_expert_outputs + shared_expert_outputs
+        cur_experts_outputs = specific_expert_outputs + part_expert_outputs + shared_expert_outputs
         cur_experts_outputs = torch.stack(cur_experts_outputs, 1)
 
         if len(self.gate_dnn_hidden_units) > 0:
@@ -204,7 +272,7 @@ class PLE(BaseModel):
         dnn_input = combined_dnn_input(sparse_embedding_list, dense_value_list)
 
         # repeat `dnn_input` for several times to generate cgc input
-        ple_inputs = [dnn_input] * (self.num_tasks + 1)  # [task1, task2, ... taskn, shared task]
+        ple_inputs = [dnn_input] * (self.num_tasks + self.part_num + 1)  # [task1, task2, ... taskn, part1, ..., partk, shared task]
         ple_outputs = []
         for i in range(self.num_levels):
             ple_outputs = self.cgc_net(inputs=ple_inputs, level_num=i)

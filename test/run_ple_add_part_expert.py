@@ -8,7 +8,7 @@ from sklearn.metrics import log_loss, roc_auc_score
 from deepctr_torch.inputs import SparseFeat, DenseFeat, get_feature_names
 from tqdm import tqdm
 
-from models.mmoe import MMOE
+from models.ple_add_part_expert import PLE_ADD_PART_EXPERT
 
 from config.TrainConfig import *
 from data_loader import load_data
@@ -17,8 +17,8 @@ import loss_weighting_strategy.EW as EW_strategy
 import loss_weighting_strategy.UW as UW_strategy
 import loss_weighting_strategy.DWA as DWA_strategy
 
-mmoe_config = {
-    'model_name': 'mmoe',
+ple_config = {
+    'model_name': 'ple_add_part_expert',
     'num_epoch': 25,
     'batch_size': 256,
     'lr': 1e-4,
@@ -55,14 +55,14 @@ def init_trainer(all_features):
 
     optim_args_dict = {
         'optim': 'adam',
-        'lr': mmoe_config['lr'],
+        'lr': ple_config['lr'],
         # 'weight_decay': widedeep_config['l2_regularization']
     }
 
     weighting_trainer = MultiTrainerWeightingLoss(
-        model=MMOE,
+        model=PLE_ADD_PART_EXPERT,
         weighting=EW_strategy.EW,
-        config=mmoe_config,
+        config=ple_config,
         model_args_dict=model_args_dict,
         weight_args_dict=weight_args_dict,
         optim_args_dict=optim_args_dict
@@ -88,10 +88,11 @@ def run(train_df, test_df):
 
 
 if __name__ == "__main__":
-    # train_df, test_df = load_data.
+    train_df, test_df = load_data.load_splited_dataframe()
+    run(train_df, test_df)
 
-    df_list = load_data.load_by_period()
-    for round_index, (_train_df, _test_df) in tqdm(enumerate(df_list)):
-        print(f'=============== run {round_index} round! ===============')
-        print(f'train_size: {_train_df.shape[0]}    test_size: {_test_df.shape[0]}')
-        run(_train_df, _test_df)
+    # df_list = load_data.load_by_period()
+    # for round_index, (_train_df, _test_df) in tqdm(enumerate(df_list)):
+    #     print(f'=============== run {round_index} round! ===============')
+    #     print(f'train_size: {_train_df.shape[0]}    test_size: {_test_df.shape[0]}')
+    #     run(_train_df, _test_df)

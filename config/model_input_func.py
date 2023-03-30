@@ -32,6 +32,9 @@ def predict_by_ple(x, model):
 def predict_by_sharebottom(x, model):
     return model(x)
 
+def predict_by_ple_add_part_expert(x, model):
+    return model(x)
+
 
 func_dict = {
     'dnn': predict_by_dnn,
@@ -41,4 +44,5 @@ func_dict = {
     'mmoe': predict_by_mmoe,
     'ple': predict_by_ple,
     'sharebottom': predict_by_sharebottom,
+    'ple_add_part_expert': predict_by_ple_add_part_expert
 }
